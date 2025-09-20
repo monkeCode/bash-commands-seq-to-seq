@@ -10,9 +10,18 @@ from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import JsonOutputParser
 import pydantic
+from langchain_core.runnables.base import RunnableLambda
 from tqdm import tqdm
+import re
+from langchain.schema.output_parser import StrOutputParser
+from json_repair import repair_json
 
 BASE_URL = "http://localhost:1234/v1"
+
+def clean_json_output(text):
+    text = re.sub(r'^```json\s*', '', text)
+    text = re.sub(r'\s*```$', '', text)
+    return repair_json(text.strip())
 
 class CommandDescription(pydantic.BaseModel):
     reasoning: str = pydantic.Field(description="Detailed technical analysis of the command")
@@ -30,7 +39,7 @@ def generate_descriptions(input_csv, output_csv, command_column='command', max_w
     )
     
     parser = JsonOutputParser(pydantic_object=CommandDescription)
-    
+
     prompt_template = PromptTemplate(
         template="""You are a bash command explanation system. Analyze the given bash command and provide a clear, accurate description.
 
@@ -43,7 +52,16 @@ def generate_descriptions(input_csv, output_csv, command_column='command', max_w
 - "reasoning": Detailed technical analysis of the command, explaining each component (flags, arguments, syntax)
 - "description": Concise, human-readable summary of what the command does (1-2 sentences)
 - Use English only for all output
-- Check command is valid, exists and could be executed and contains no excess text, mark it in is_command field as true, false otherwise
+- Check command is valid, exists and could be executed and contains no excess text or anything else, mark it in is_command field as true, false otherwise, follow the next instuctions:
+### MARK is_command true if:
+- command is valid and exists
+- command could be executed without errors
+- command not contains excess text or something else
+### MARK is_command false if:
+- command does not exists
+- command is'n complete or contains excess text
+
+IF COMMAND CONTAINS FILES OR IP ADDRESSES LET IT CORRECT AND EXISTS, VERFY ONLY SYNTAXIS IN COMMANDS
 
 ## Examples
 Input: "cd /var/log"
@@ -76,7 +94,7 @@ Describe this command: {command}""",
     )
     
     # Create chain
-    chain = prompt_template | llm | parser
+    chain = prompt_template | llm | StrOutputParser() | clean_json_output | parser
     
     # Read input data
     df = pd.read_csv(input_csv)
@@ -109,10 +127,12 @@ Describe this command: {command}""",
                 "is_command": result.get("is_command", "")
             }
             if r["reasoning"] == "" or r["is_command"] == "":
+                print(r)
                 return None
             else:
                 return r
         except Exception as e:
+            print(e)
             return None
     
     def save_results(batch_results):
@@ -149,7 +169,6 @@ Describe this command: {command}""",
                 if result:
                     results.append(result)
                     # print(f"Processed {i+1}/{len(commands)}: {result[command_column]}")
-                
                 # Save batch every batch_size results
                 if len(results) >= batch_size:
                     save_results(results)
