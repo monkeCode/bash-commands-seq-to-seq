@@ -1,0 +1,5 @@
+outs:
+- md5: 09e583d0d0d8fe8c965c0d46f8e42757
+  size: 45469
+  hash: md5
+  path: all_commands.txt

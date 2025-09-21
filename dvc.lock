@@ -1,13 +1,13 @@
 schema: '2.0'
 stages:
   filter_data:
-    cmd: python filter_data.py
+    cmd: python src/filter_data.py
     deps:
     - path: data/generated_data.csv
       hash: md5
       md5: d4a552694f558ce60ba20054204f0931
       size: 21727768
-    - path: filter_data.py
+    - path: src/filter_data.py
       hash: md5
       md5: c1d38d7ef9908e7dee633dd95a7ba297
       size: 253

@@ -1,8 +1,26 @@
 stages:
   filter_data:
-    cmd: python filter_data.py
+    cmd: python src/filter_data.py
     deps:
     - data/generated_data.csv
-    - filter_data.py
+    - src/filter_data.py
     outs:
     - data/filtered_data.csv
+  scrape_commands:
+    cmd: python command_generator/scraper.py
+    deps:
+    - command_generator/all_commands.txt
+    - command_generator/scraper.py
+    - command_generator/utils.py
+    outs:
+    - command_generator/syntax.json
+    - command_generator/utility_map.json
+  generate_commands:
+    cmd: python command_generator/generator.py
+    deps:
+    - command_generator/generator.py
+    - command_generator/syntax.json
+    - command_generator/utility_map.json
+    - command_generator/utils.py
+    outs:
+    - data/generated_commands.txt
