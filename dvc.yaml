@@ -1,0 +1,8 @@
+stages:
+  filter_data:
+    cmd: python filter_data.py
+    deps:
+    - data/generated_data.csv
+    - filter_data.py
+    outs:
+    - data/filtered_data.csv

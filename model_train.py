@@ -62,7 +62,6 @@ class T5DataModule(pl.LightningDataModule):
         self.description_column = description_column
         self.command_column = command_column
 
-    def setup(self, stage=None):
         dataset = CommandDataset(
             self.csv_file,
             self.tokenizer,
@@ -97,7 +96,7 @@ class T5DataModule(pl.LightningDataModule):
 class T5Model(pl.LightningModule):
     def __init__(self, model_name='t5-small', lr=1e-4):
         super().__init__()
-        self.model = T5ForConditionalGeneration.from_pretrained(model_name)
+        self.model = T5ForConditionalGeneration.from_pretrained(model_name).train()
         self.lr = lr
         self.save_hyperparameters()
 

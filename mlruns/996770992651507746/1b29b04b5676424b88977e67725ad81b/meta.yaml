@@ -1,0 +1,15 @@
+artifact_uri: /home/gera/code/autocomplete/mlruns/996770992651507746/1b29b04b5676424b88977e67725ad81b/artifacts
+deleted_time: 1758459954722
+end_time: 1758459728512
+entry_point_name: ''
+experiment_id: '996770992651507746'
+lifecycle_stage: deleted
+run_id: 1b29b04b5676424b88977e67725ad81b
+run_name: merciful-cow-498
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1758459728503
+status: 4
+tags: []
+user_id: gera
