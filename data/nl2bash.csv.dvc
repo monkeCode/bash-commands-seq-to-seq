@@ -1,0 +1,5 @@
+outs:
+- md5: 7047d7d5decfdf39adfc5121502b9183
+  size: 2902878
+  hash: md5
+  path: nl2bash.csv

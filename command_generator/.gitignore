@@ -1,3 +1,5 @@
 /syntax.json
 /utility_map.json
 /all_commands.txt
+/__pycache__
+/command_templates.txt

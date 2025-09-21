@@ -16,3 +16,75 @@ stages:
       hash: md5
       md5: 79909268aa02fb0eb51d0e3237c812a9
       size: 5779776
+  prepare_train_data:
+    cmd: python src/filter_data.py
+    deps:
+    - path: data/chatGPT_generated_data.json
+      hash: md5
+      md5: 871b45f37c7f103360ba17a41840a882
+      size: 3606545
+    - path: data/generated_data.csv
+      hash: md5
+      md5: 533fb7df2d23a079e0f7b2e8c7af4eb5
+      size: 21727760
+    - path: data/nl2bash.csv
+      hash: md5
+      md5: 7047d7d5decfdf39adfc5121502b9183
+      size: 2902878
+    - path: src/filter_data.py
+      hash: md5
+      md5: 6594bbc0bc775841fe8ddf4002344596
+      size: 664
+    outs:
+    - path: data/train.csv
+      hash: md5
+      md5: ba14d14eefc4bbd60821658e00055539
+      size: 11440347
+  scrape_commands:
+    cmd: python command_generator/scraper.py
+    deps:
+    - path: command_generator/all_commands.txt
+      hash: md5
+      md5: 09e583d0d0d8fe8c965c0d46f8e42757
+      size: 45469
+    - path: command_generator/scraper.py
+      hash: md5
+      md5: 1371d2e20f79b4e75094d73560b06753
+      size: 9840
+    - path: command_generator/utils.py
+      hash: md5
+      md5: 9d34aed65483b71b476581579691a039
+      size: 2345
+    outs:
+    - path: command_generator/syntax.json
+      hash: md5
+      md5: 45d21ba58e44cdb91ff901be2b5b5b62
+      size: 84460
+    - path: command_generator/utility_map.json
+      hash: md5
+      md5: 89c7c4b99e5efc6454b8572701f52ed0
+      size: 302177
+  generate_commands:
+    cmd: python command_generator/generator.py
+    deps:
+    - path: command_generator/generator.py
+      hash: md5
+      md5: 24606ccdac493d6d76def01b2f2e21e0
+      size: 9744
+    - path: command_generator/syntax.json
+      hash: md5
+      md5: 45d21ba58e44cdb91ff901be2b5b5b62
+      size: 84460
+    - path: command_generator/utility_map.json
+      hash: md5
+      md5: 89c7c4b99e5efc6454b8572701f52ed0
+      size: 302177
+    - path: command_generator/utils.py
+      hash: md5
+      md5: 9d34aed65483b71b476581579691a039
+      size: 2345
+    outs:
+    - path: command_generator/command_templates.txt
+      hash: md5
+      md5: cc70a5cf6241927953db70dbc201b85c
+      size: 2589188

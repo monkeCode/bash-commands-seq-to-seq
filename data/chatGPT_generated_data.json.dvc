@@ -1,0 +1,5 @@
+outs:
+- md5: 871b45f37c7f103360ba17a41840a882
+  size: 3606545
+  hash: md5
+  path: chatGPT_generated_data.json

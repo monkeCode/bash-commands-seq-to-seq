@@ -11,7 +11,7 @@ def valid_arg(flag):
 
 
 class Generator:
-    def __init__(self, syntax_path='src/syntax.json', map_path='src/utility_map.json', utilities=None):
+    def __init__(self,utilities, syntax_path='src/syntax.json', map_path='src/utility_map.json'):
         """Initializes the Generator class.
 
         :param syntax_path: (str) A file path to retrieve syntax structure.
@@ -23,9 +23,6 @@ class Generator:
 
         with open(map_path) as fp:
             self.mappings = json.load(fp)
-
-        if utilities is None:
-            utilities = UTILITIES
 
         self.utilities = list(filter(lambda x: x in self.syntax and x in self.mappings, utilities))
 
@@ -56,27 +53,23 @@ class Generator:
                 ret.append(syntax.replace("[Options]", option_combo))
 
         if not max_commands or max_commands > len(ret):
-            print(f"Generated {len(ret)} commands for {utility}")
             return ret
-        print(f"Generated {max_commands} commands for {utility}")
         return random.sample(ret, max_commands)
 
-    def generate_all_commands(self, save_path=None):
+    def generate_all_commands(self, save_path):
         """Generates the maximum number of commands for every utility.
 
         :param save_path: (optional str) the path to a file to save the commands to.
         :returns (list) of (str) the commands generated.
         """
-        ret = []
         for ut in self.utilities:
-            if ut in self.syntax and ut in self.mappings:
-                ret.extend(self.generate_commands(ut))
+                if ut in self.syntax and ut in self.mappings:
+                    l = self.generate_commands(ut, max_commands=50)
+                    print(ut, len(l))
+                    with open(save_path, 'a') as fp:
+                        fp.write("\n".join(l))
 
-        if save_path:
-            with open(save_path, 'w') as fp:
-                fp.write("\n".join(ret))
 
-        return ret
 
     def generate_scaled_commands(self, training_path='data/original_training.txt', save_path=None):
         """Generates commands scaled to distribution of training data.
@@ -265,5 +258,10 @@ class Command(object):
 
 if __name__ == "__main__":
 
-    gen = Generator(utilities=UTILITIES)
-    cmds = gen.generate_all_commands("data/generated_commands.txt")
+    c = []
+    with open("command_generator/all_commands.txt") as f:
+        for l in f.readlines():
+            c.append(l.strip())
+            
+    gen = Generator(utilities=c, syntax_path="command_generator/syntax.json", map_path="command_generator/utility_map.json")
+    gen.generate_all_commands("command_generator/command_templates.txt")

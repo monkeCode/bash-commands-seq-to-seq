@@ -1,11 +1,13 @@
 stages:
-  filter_data:
+  prepare_train_data:
     cmd: python src/filter_data.py
     deps:
     - data/generated_data.csv
     - src/filter_data.py
+    - data/nl2bash.csv
+    - data/chatGPT_generated_data.json
     outs:
-    - data/filtered_data.csv
+    - data/train.csv
   scrape_commands:
     cmd: python command_generator/scraper.py
     deps:
@@ -23,4 +25,4 @@ stages:
     - command_generator/utility_map.json
     - command_generator/utils.py
     outs:
-    - data/generated_commands.txt
+    - command_generator/command_templates.txt
