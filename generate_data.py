@@ -21,7 +21,14 @@ BASE_URL = "http://localhost:1234/v1"
 def clean_json_output(text):
     text = re.sub(r'^```json\s*', '', text)
     text = re.sub(r'\s*```$', '', text)
-    return repair_json(text.strip())
+    r = repair_json(text.strip())
+    try:
+        js = json.loads(r)
+        if "properties" in js:
+            return json.dumps(js["properties"])
+    except Exception:
+        pass
+    return r
 
 class CommandDescription(pydantic.BaseModel):
     reasoning: str = pydantic.Field(description="Detailed technical analysis of the command")
@@ -34,14 +41,14 @@ def generate_descriptions(input_csv, output_csv, command_column='command', max_w
         api_key="unused", 
         base_url=BASE_URL, 
         temperature=0.1, 
-        max_completion_tokens=1024,
-        model="local-model"  # Specify the model name
+        max_completion_tokens=2048,
+        model="local-model" 
     )
     
     parser = JsonOutputParser(pydantic_object=CommandDescription)
 
     prompt_template = PromptTemplate(
-        template="""You are a bash command explanation system. Analyze the given bash command and provide a clear, accurate description.
+        template="""You are a bash command explanation system. Analyze the given bash command and provide a clear, accurate description in action format.
 
 ## Input
 - Receive a bash command string
@@ -50,7 +57,7 @@ def generate_descriptions(input_csv, output_csv, command_column='command', max_w
 ## Output Requirements
 - Provide a JSON object with exactly two fields: "reasoning" and "description"
 - "reasoning": Detailed technical analysis of the command, explaining each component (flags, arguments, syntax)
-- "description": Concise, human-readable summary of what the command does (1-2 sentences)
+- "description": Concise, human-readable action of what the command does (1-2 sentences), always note paths, urls, ips, and important content
 - Use English only for all output
 - Check command is valid, exists and could be executed and contains no excess text or anything else, mark it in is_command field as true, false otherwise, follow the next instuctions:
 ### MARK is_command true if:
@@ -67,16 +74,32 @@ IF COMMAND CONTAINS FILES OR IP ADDRESSES LET IT CORRECT AND EXISTS, VERFY ONLY 
 Input: "cd /var/log"
 Output: {{
   "reasoning": "Command 'cd' (change directory) with argument '/var/log' (absolute path to directory)",
-  "description": "Changes current working directory to /var/log",
+  "description": "Change current working directory to /var/log",
   is_command:true
 }}
 
 Input: "tar -czvf archive.tar.gz /home/user"
 Output: {{
   "reasoning": "Command 'tar' (tape archive) with flags: -c (create archive), -z (gzip compression), -v (verbose output), -f (specify filename). Arguments: 'archive.tar.gz' (output filename), '/home/user' (directory to archive)",
-  "description": "Creates a gzip-compressed tar archive of /home/user directory",
+  "description": "Create a gzip-compressed tar archive of /home/user directory",
   is_command: true
 }}
+
+Input: "//192.168.2.101/ShareForVMs /media/share/ cifs username=toeknee,password=2dog$hit3"
+Output: {{
+"reasoning": "No commands provided, it could be line in log file or part of arguments. command is incorrect",
+"description": "no command is provided",
+is_command: false
+}}
+
+
+Input: "git clone git://projects.archlinux.org/archiso.git && cd archiso"
+Output:{{ 
+"reasoning": "The command uses `git clone` to create a copy of the repository from 'git://projects.archlinux.org/archiso.git'. It then changes the current working directory to 'archiso' using `cd`. No files or IP addresses are involved.",
+"description": "Clones the Git repository from the projects.archlinux.org/archiso.git and changes the current working directory to archiso.",
+"is_command": true
+}}
+
 
 ## Security Note
 - Do not execute or simulate execution of any commands
@@ -124,16 +147,17 @@ Describe this command: {command}""",
                 "command": command,
                 "reasoning": result.get("reasoning", ""),
                 "description": result.get("description", ""),
-                "is_command": result.get("is_command", "")
+                "is_command": result.get("is_command", False)
             }
-            if r["reasoning"] == "" or r["is_command"] == "":
-                print(r)
-                return None
-            else:
-                return r
+            return r
         except Exception as e:
             print(e)
-            return None
+            return {
+                "command": command,
+                "reasoning": "",
+                "description": "",
+                "is_command": False
+            }
     
     def save_results(batch_results):
         """Save a batch of results to CSV (thread-safe)"""
@@ -153,7 +177,7 @@ Describe this command: {command}""",
     
     # Process commands with ThreadPoolExecutor
     results = []
-    batch_size = 5
+    batch_size = 50
     
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Submit all commands for processing
@@ -189,7 +213,7 @@ if __name__ == "__main__":
     parser.add_argument('--input', type=str, required=True, help='Path to input CSV file with commands')
     parser.add_argument('--output', type=str, required=True, help='Path to output CSV file')
     parser.add_argument('--command_column', type=str, default='command', help='Name of the command column')
-    parser.add_argument('--max_workers', type=int, default=5, help='Number of parallel workers')
+    parser.add_argument('--max_workers', type=int, default=1, help='Number of parallel workers')
     parser.add_argument('--limit', type=int, default=None, help='Limit number of commands to process')
     
     args = parser.parse_args()
