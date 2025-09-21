@@ -1,0 +1,5 @@
+outs:
+- md5: de9305037dcc5444e1b7aca1240fd629
+  size: 48598
+  hash: md5
+  path: markup_data.csv

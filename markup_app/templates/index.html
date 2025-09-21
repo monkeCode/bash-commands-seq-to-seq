@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Разметка команд</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Разметка команд</h1>
+        <div class="stats">
+            Уже размечено: {{ labeled_count }} строк
+        </div>
+        
+        {% if no_data %}
+            <div class="message">
+                <p>Все данные размечены! 🎉</p>
+                <p>Результаты сохранены в {{ OUTPUT_CSV }}</p>
+            </div>
+        {% else %}
+            <div class="samples-container">
+                {% for sample in samples %}
+                <div class="sample-card" id="sample-{{ sample.index }}" data-index="{{ sample.index }}">
+                    <h3>Пример #{{ loop.index }}</h3>
+                    
+                    <div class="field">
+                        <label>Команда:</label>
+                        <div class="value">{{ sample.command }}</div>
+                    </div>
+                    
+                    <div class="field">
+                        <label>Обоснование модели:</label>
+                        <div class="value">{{ sample.reasoning }}</div>
+                    </div>
+                    
+                    <div class="field">
+                        <label>Описание:</label>
+                        <div class="value">{{ sample.description }}</div>
+                    </div>
+                    
+                    <div class="field">
+                        <label>Is_command (модель):</label>
+                        <div class="value">{{ sample.is_command }}</div>
+                    </div>
+                    
+                    <div class="field">
+                        <label>Категория:</label>
+                        <div class="radio-group" id="group_{{sample.index}}">
+                            <label>
+                                <input type="radio" name="group_{{sample.index}}" value="good">
+                                Good
+                            </label>
+                            <label>
+                                <input type="radio" name="group_{{sample.index}}" value="bad">
+                                Bad
+                            </label>
+                            <label>
+                                <input type="radio" name="group_{{sample.index}}" value="partly good">
+                                Partly Good
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="field">
+                        <label>Причина (если не good):</label>
+                        <textarea class="reason-input" data-sample-id="{{ sample.index }}" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="field">
+                        <label>
+                            <input type="checkbox" class="real-command-checkbox" data-sample-id="{{ sample.index }}">
+                            Реальный is_command (отметьте, если команда валидна)
+                        </label>
+                    </div>
+                    
+                    <div class="status" id="status-{{ sample.index }}"></div>
+                </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
