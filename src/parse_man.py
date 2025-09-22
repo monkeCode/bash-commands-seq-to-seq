@@ -32,7 +32,7 @@ def get_man_description(command):
         
     return None
 
-def parse_man_pages(input_csv, output_csv, command_column='command', max_workers=10):
+def parse_man_pages(input_csv, output_csv, command_column='command'):
     df = pd.read_csv(input_csv)
     commands = df[command_column].unique().tolist()
     
@@ -53,11 +53,10 @@ def parse_man_pages(input_csv, output_csv, command_column='command', max_workers
     print(f"Сохранено {len(results)} новых описаний в {output_csv}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Парсинг man-страниц для получения описаний команд')
-    parser.add_argument('--input', type=str, required=True, help='Путь к входному CSV файлу с командами')
-    parser.add_argument('--output', type=str, required=True, help='Путь к выходному CSV файлу')
-    parser.add_argument('--command_column', type=str, default='command', help='Название колонки с командами')
-    parser.add_argument('--max_workers', type=int, default=4, help='Количество потоков для параллельной обработки')
+    parser = argparse.ArgumentParser(description='Linux manual parser')
+    parser.add_argument('--input', type=str, required=True, help='Input csv file path')
+    parser.add_argument('--output', type=str, required=True, help='Output csv file path')
+    parser.add_argument('--command_column', type=str, default='command', help='command column name')
     
     args = parser.parse_args()
-    parse_man_pages(args.input, args.output, args.command_column, args.max_workers)
+    parse_man_pages(args.input, args.output, args.command_column)

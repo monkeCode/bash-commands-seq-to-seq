@@ -134,7 +134,7 @@ class T5Model(pl.LightningModule):
             attention_mask=batch['attention_mask'],
             max_length=self.max_target_len
         )
-        target_texts = [[self.tokenizer.decode(t, skip_special_tokens=True)] for t in batch['labels']]
+        target_texts = [[self.tokenizer.decode(t, skip_special_tokens=True), self.tokenizer.decode(t, skip_special_tokens=True).replace("'", "").replace('"', "") ] for t in batch['labels']]
         pred_texts = [self.tokenizer.decode(p, skip_special_tokens=True) for p in preds]
 
         self.val_bleu(pred_texts, target_texts)
@@ -158,7 +158,7 @@ class T5Model(pl.LightningModule):
             attention_mask=batch['attention_mask'],
             max_length=self.max_target_len
         )
-        target_texts = [[self.tokenizer.decode(t, skip_special_tokens=True)] for t in batch['labels']]
+        target_texts = [[self.tokenizer.decode(t, skip_special_tokens=True), self.tokenizer.decode(t, skip_special_tokens=True).replace("'", "").replace('"', "") ] for t in batch['labels']]
         pred_texts = [self.tokenizer.decode(p, skip_special_tokens=True) for p in preds]
 
         self.test_bleu(pred_texts, target_texts)
@@ -176,14 +176,16 @@ class T5Model(pl.LightningModule):
         return torch.optim.Adam(self.parameters(), lr=self.lr)
 
 def main():
-    parser = argparse.ArgumentParser(description='Обучение T5 с использованием PyTorch Lightning и MLflow')
-    parser.add_argument('--input', type=str, required=True, help='Путь к CSV файлу')
-    parser.add_argument('--description_column', type=str, default='description', help='Колонка с описаниями')
-    parser.add_argument('--command_column', type=str, default='command', help='Колонка с командами')
-    parser.add_argument('--max_epochs', type=int, default=10, help='Количество эпох')
-    parser.add_argument('--batch_size', type=int, default=16, help='Размер батча')
+    parser = argparse.ArgumentParser(description='Finetuning T5 with PyTorch Lightning and MLflow')
+    parser.add_argument('--input', type=str, required=True, help='train.csv path')
+    parser.add_argument('--description_column', type=str, default='description', help='Description column')
+    parser.add_argument('--command_column', type=str, default='command', help='Command column')
+    parser.add_argument('--max_epochs', type=int, default=10, help='Epoches count')
+    parser.add_argument('--batch_size', type=int, default=16, help='Batch size')
     parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
-    parser.add_argument('--experiment_name', type=str, default='T5-Training', help='Название эксперимента MLflow')
+    parser.add_argument('--experiment_name', type=str, default='T5-Training', help='MLflow exp name')
+    parser.add_argument('--run_id', type=str, default=None, help='Mlflow run id for resume training')
+    parser.add_argument('--checkpoint_path', type=str, default=None, help='path to checkpoing.ckpt file')
     
     args = parser.parse_args()
 
@@ -208,7 +210,7 @@ def main():
     mlflow.set_tracking_uri("./mlruns")
     mlflow.set_experiment(args.experiment_name)
 
-    with mlflow.start_run() as run:
+    with mlflow.start_run(run_id=args.run_id) as run:
     
         mlflow.log_inputs(datasets=[mlflow_train_dataset, mlflow_test_dataset], contexts=["train", "test"], tags_list=[None, None])
 
@@ -223,13 +225,13 @@ def main():
         
 
         checkpoint_callback = ModelCheckpoint(
-            monitor='val_bleu',
+            monitor='val_loss',
             dirpath='./checkpoints',
             filename='t5-best-{epoch:02d}-{val_bleu:.2f}',
             save_top_k=1,
-            mode='max'
+            mode='min'
         )
-        early_stopping_checkpoint = EarlyStopping("val_bleu", min_delta=0.01, mode="max" )
+        early_stopping_checkpoint = EarlyStopping("val_loss", min_delta=0.01, mode="min")
 
         mlflow_logger = MLFlowLogger(
             experiment_name="T5 Training",
@@ -246,10 +248,11 @@ def main():
             callbacks=[checkpoint_callback, early_stopping_checkpoint],
         )
 
-        trainer.fit(model, data_module)
+        trainer.fit(model, data_module, ckpt_path=args.checkpoint_path)
+
+        trainer.test(model, data_module)
 
         model = T5Model.load_from_checkpoint(checkpoint_callback.best_model_path)
-        trainer.test(model, data_module)
 
         components = {
                     "model": model.model,

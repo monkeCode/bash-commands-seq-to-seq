@@ -3,49 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Разметка команд</title>
+    <title>Commands annotation</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="container">
-        <h1>Разметка команд</h1>
+        <h1>Commands annotation</h1>
         <div class="stats">
-            Уже размечено: {{ labeled_count }} строк
+            Already annotated: {{ labeled_count }} rows
         </div>
         
         {% if no_data %}
             <div class="message">
-                <p>Все данные размечены! 🎉</p>
-                <p>Результаты сохранены в {{ OUTPUT_CSV }}</p>
+                <p>All rows are annotated! 🎉</p>
+                <p>Results saved in {{ OUTPUT_CSV }}</p>
             </div>
         {% else %}
             <div class="samples-container">
                 {% for sample in samples %}
                 <div class="sample-card" id="sample-{{ sample.index }}" data-index="{{ sample.index }}">
-                    <h3>Пример #{{ loop.index }}</h3>
+                    <h3>Case #{{ loop.index }}</h3>
                     
                     <div class="field">
-                        <label>Команда:</label>
+                        <label>Command:</label>
                         <div class="value">{{ sample.command }}</div>
                     </div>
                     
                     <div class="field">
-                        <label>Обоснование модели:</label>
+                        <label>Model's reasoning:</label>
                         <div class="value">{{ sample.reasoning }}</div>
                     </div>
                     
                     <div class="field">
-                        <label>Описание:</label>
+                        <label>Description:</label>
                         <div class="value">{{ sample.description }}</div>
                     </div>
                     
                     <div class="field">
-                        <label>Is_command (модель):</label>
+                        <label>Is_command (model):</label>
                         <div class="value">{{ sample.is_command }}</div>
                     </div>
                     
                     <div class="field">
-                        <label>Категория:</label>
+                        <label>Label:</label>
                         <div class="radio-group" id="group_{{sample.index}}">
                             <label>
                                 <input type="radio" name="group_{{sample.index}}" value="good">
@@ -63,14 +63,14 @@
                     </div>
                     
                     <div class="field">
-                        <label>Причина (если не good):</label>
+                        <label>Justification (if not good):</label>
                         <textarea class="reason-input" data-sample-id="{{ sample.index }}" rows="3"></textarea>
                     </div>
                     
                     <div class="field">
                         <label>
                             <input type="checkbox" class="real-command-checkbox" data-sample-id="{{ sample.index }}">
-                            Реальный is_command (отметьте, если команда валидна)
+                            Real is_command (mark if command is valid)
                         </label>
                     </div>
                     
