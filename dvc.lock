@@ -19,27 +19,23 @@ stages:
   prepare_train_data:
     cmd: python src/filter_data.py
     deps:
-    - path: data/chatGPT_generated_data.json
-      hash: md5
-      md5: 871b45f37c7f103360ba17a41840a882
-      size: 3606545
     - path: data/generated_data.csv
       hash: md5
       md5: 533fb7df2d23a079e0f7b2e8c7af4eb5
       size: 21727760
-    - path: data/nl2bash.csv
+    - path: data/inet_dataset.csv
       hash: md5
-      md5: 7047d7d5decfdf39adfc5121502b9183
-      size: 2902878
+      md5: 6d7be563791ee73def3d8038636c2e91
+      size: 7205479
     - path: src/filter_data.py
       hash: md5
-      md5: 6594bbc0bc775841fe8ddf4002344596
-      size: 664
+      md5: 3cd0af6a7d75ccc677f54104e2c08473
+      size: 370
     outs:
     - path: data/train.csv
       hash: md5
-      md5: ba14d14eefc4bbd60821658e00055539
-      size: 11440347
+      md5: 023fcc9a612bdb6a2c960d19d5fbc94d
+      size: 12985228
   scrape_commands:
     cmd: python command_generator/scraper.py
     deps:

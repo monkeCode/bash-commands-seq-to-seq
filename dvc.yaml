@@ -4,8 +4,7 @@ stages:
     deps:
     - data/generated_data.csv
     - src/filter_data.py
-    - data/nl2bash.csv
-    - data/chatGPT_generated_data.json
+    - data/inet_dataset.csv
     outs:
     - data/train.csv
   scrape_commands:

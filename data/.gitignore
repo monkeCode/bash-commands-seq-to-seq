@@ -6,5 +6,5 @@
 /filtered_data.csv
 /generated_commands.txt
 /nl2bash.csv
-/chatGPT_generated_data.json
 /train.csv
+/inet_dataset.csv
