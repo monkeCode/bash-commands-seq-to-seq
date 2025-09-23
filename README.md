@@ -139,8 +139,8 @@ Model annotated every bash line with the `is_command` true or false label. There
 
 | Split    | Samples | Description                     |
 | -------- | ------- | ------------------------------- |
-| Training | 81,277  | Filtered and annotated commands |
-| Test     | 1,439   | Manually verified commands      |
+| Training | 93824   | Filtered and annotated commands |
+| Test     | 1500    | Manually verified commands      |
 
 ## Training Setup
 
@@ -157,13 +157,12 @@ Model annotated every bash line with the `is_command` true or false label. There
 | Early Stopping    | Based on BLEU score |
 | Optimizer         | Adam                |
 
-### Performance Metrics
+### Performance Metrics on test set
 
-| Metric     | Validation | Test |
-| ---------- | ---------- | ---- |
-| Loss       | 0.29       | 0.40 |
-| Perplexity | 1.34       | 1.42 |
-| BLEU Score | 0.5        | 0.36 |
+| Metric         | Value |
+| -------------- | ----- |
+| Perplexity     | 1.17  |
+| $BLEU^2$ Score | 0.66  |
 
 ## Infrastructure
 
