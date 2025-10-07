@@ -11,7 +11,38 @@ import mlflow.transformers
 from torchmetrics.text import BLEUScore
 from torchmetrics.text import Perplexity
 from mlflow.data.meta_dataset import MetaDataset
+from torchmetrics import Metric
+import numpy as np
 
+MLFLOW_ADDR = "http://mlflow.k3s.home"
+
+class ExactMatch(Metric):
+    def __init__(self, normalize_fn=None):
+        super().__init__()
+        self.add_state("correct", default=torch.tensor(0), dist_reduce_fx="sum")
+        self.add_state("total", default=torch.tensor(0), dist_reduce_fx="sum")
+        self.normalize_fn = normalize_fn or (lambda x: x.strip().lower())
+        
+    def update(self, preds, targets):
+        if isinstance(preds, list):
+            preds = [self.normalize_fn(p) for p in preds]
+        else:
+            preds = [self.normalize_fn(preds)]
+            
+        if isinstance(targets[0], list):
+            # Handle multiple reference texts
+            targets = [[self.normalize_fn(t) for t in target_list] for target_list in targets]
+        else:
+            # Single reference text
+            targets = [[self.normalize_fn(t)] for t in targets]
+        
+        for pred, target_list in zip(preds, targets):
+            if pred in target_list:
+                self.correct += 1
+            self.total += 1
+            
+    def compute(self):
+        return self.correct.float() / self.total if self.total > 0 else torch.tensor(0.0)
 
 class CommandDataset(Dataset):
     def __init__(self, csv_file, tokenizer, max_source_len=128, max_target_len=64, 
@@ -106,10 +137,20 @@ class T5Model(pl.LightningModule):
         self.max_target_len = max_target_len
         self.save_hyperparameters()
 
+        # Normalization function for exact match (remove quotes and normalize whitespace)
+        self.normalize_fn = lambda x: x.strip().lower().replace("'", "").replace('"', "").replace("  ", " ")
+        
+        # Validation metrics
         self.val_bleu = BLEUScore(2)
-        self.test_bleu = BLEUScore(2)
+        self.val_bleu_4 = BLEUScore(4)
         self.val_perplexity = Perplexity()
+        self.val_exact_match = ExactMatch(self.normalize_fn)
+        
+        # Test metrics
+        self.test_bleu = BLEUScore(2)
+        self.test_bleu_4 = BLEUScore(4)
         self.test_perplexity = Perplexity()
+        self.test_exact_match = ExactMatch(self.normalize_fn)
 
     def forward(self, input_ids, attention_mask, labels=None):
         return self.model(
@@ -138,15 +179,22 @@ class T5Model(pl.LightningModule):
         pred_texts = [self.tokenizer.decode(p, skip_special_tokens=True) for p in preds]
 
         self.val_bleu(pred_texts, target_texts)
+        self.val_bleu_4(pred_texts, target_texts)
         self.val_perplexity(outputs.logits, batch['labels'])
+        self.val_exact_match(pred_texts, target_texts)
 
         return loss
 
     def on_validation_epoch_end(self):
-        self.log('val_bleu', self.val_bleu.compute(), prog_bar=True)
+        self.log('val_bleu_2', self.val_bleu.compute(), prog_bar=True)
+        self.log('val_bleu_4', self.val_bleu_4.compute(), prog_bar=True)
         self.log('val_perplexity', self.val_perplexity.compute(), prog_bar=True)
+        self.log('val_exact_match', self.val_exact_match.compute(), prog_bar=True)
+        
         self.val_bleu.reset()
+        self.val_bleu_4.reset()
         self.val_perplexity.reset()
+        self.val_exact_match.reset()
 
     def test_step(self, batch, batch_idx):
         outputs = self(**batch)
@@ -162,15 +210,22 @@ class T5Model(pl.LightningModule):
         pred_texts = [self.tokenizer.decode(p, skip_special_tokens=True) for p in preds]
 
         self.test_bleu(pred_texts, target_texts)
+        self.test_bleu_4(pred_texts, target_texts)
         self.test_perplexity(outputs.logits, batch['labels'])
+        self.test_exact_match(pred_texts, target_texts)
 
         return loss
 
     def on_test_epoch_end(self):
-        self.log('test_bleu', self.test_bleu.compute(), prog_bar=True)
+        self.log('test_bleu_2', self.test_bleu.compute(), prog_bar=True)
+        self.log('test_bleu_4', self.test_bleu_4.compute(), prog_bar=True)
         self.log('test_perplexity', self.test_perplexity.compute(), prog_bar=True)
+        self.log('test_exact_match', self.test_exact_match.compute(), prog_bar=True)
+        
         self.test_bleu.reset()
+        self.test_bleu_4.reset()
         self.test_perplexity.reset()
+        self.test_exact_match.reset()
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=self.lr)
@@ -197,7 +252,6 @@ def main():
     test_dataset = pd.read_csv("data/test.csv")
     mlflow_test_dataset = mlflow.data.from_pandas(test_dataset, source="data/test.csv", name="test-data")
 
-
     data_module = T5DataModule(
         train_csv_file=train_dataset,
         test_csv_file=test_dataset,
@@ -207,7 +261,7 @@ def main():
         command_column=args.command_column
     )
 
-    mlflow.set_tracking_uri("./mlruns")
+    mlflow.set_tracking_uri(MLFLOW_ADDR)
     mlflow.set_experiment(args.experiment_name)
 
     with mlflow.start_run(run_id=args.run_id) as run:
@@ -221,28 +275,37 @@ def main():
             'max_epochs': args.max_epochs,
             'description_column': args.description_column,
             'command_column': args.command_column,
+            'architecture': 'T5ForConditionalGeneration',
+            'task': 'text2text-generation'
         })
         
+        # Log model architecture and task as tags
+        mlflow.set_tags({
+            'architecture': 'T5ForConditionalGeneration',
+            'task': 'text2text-generation',
+            'framework': 'pytorch',
+            'library': 'transformers'
+        })
 
         checkpoint_callback = ModelCheckpoint(
-            monitor='val_loss',
+            monitor='val_bleu_2',
             dirpath='./checkpoints',
-            filename='t5-best-{epoch:02d}-{val_bleu:.2f}',
-            save_top_k=1,
-            mode='min'
+            filename='t5-best-{epoch:02d}-{val_bleu_2:.2f}',
+            save_top_k=3,
+            mode='max'
         )
-        early_stopping_checkpoint = EarlyStopping("val_loss", min_delta=0.01, mode="min")
+        early_stopping_checkpoint = EarlyStopping("val_bleu_2", min_delta=0.01, mode="max")
 
         mlflow_logger = MLFlowLogger(
             experiment_name="T5 Training",
-            tracking_uri="./mlruns",
+            tracking_uri=MLFLOW_ADDR,
             run_id=run.info.run_id
         )
 
         trainer = pl.Trainer(
             max_epochs=args.max_epochs,
             logger=mlflow_logger,
-            log_every_n_steps=10,
+            log_every_n_steps=500,
             accelerator='auto',
             devices='auto',
             callbacks=[checkpoint_callback, early_stopping_checkpoint],
@@ -250,15 +313,35 @@ def main():
 
         trainer.fit(model, data_module, ckpt_path=args.checkpoint_path)
 
-        trainer.test(model, data_module)
-
         model = T5Model.load_from_checkpoint(checkpoint_callback.best_model_path)
+        trainer.test(model, data_module)
+        
+        # Create signature for the model
+        from mlflow.models.signature import ModelSignature
+        from mlflow.types.schema import Schema, ColSpec
+        
+        input_schema = Schema([
+            ColSpec("string"),
+        ])
+        output_schema = Schema([
+            ColSpec("string"),
+        ])
+        signature = ModelSignature(inputs=input_schema, outputs=output_schema)
 
         components = {
-                    "model": model.model,
-                    "tokenizer": tokenizer,
-                }
-        mlflow.transformers.log_model(components, "t5-model")
+            "model": model.model,
+            "tokenizer": tokenizer,
+        }
+        
+        # Log model with signature and additional metadata
+        mlflow.transformers.log_model(
+            transformers_model=components,
+            artifact_path="t5-model",
+            signature=signature,
+            input_example=["List all files in current directory"],
+            task ="text2text-generation",
+            architecture="T5ForConditionalGeneration",
+        )
 
 if __name__ == "__main__":
     main()

@@ -21,8 +21,8 @@ stages:
     deps:
     - path: data/generated_data.csv
       hash: md5
-      md5: 533fb7df2d23a079e0f7b2e8c7af4eb5
-      size: 21727760
+      md5: f7b29d72308580b498d355d578eadeec
+      size: 23259926
     - path: data/inet_dataset.csv
       hash: md5
       md5: 6d7be563791ee73def3d8038636c2e91
@@ -34,8 +34,8 @@ stages:
     outs:
     - path: data/train.csv
       hash: md5
-      md5: 023fcc9a612bdb6a2c960d19d5fbc94d
-      size: 12985228
+      md5: 130b0dd572bcfd6cd28e6ace16190d98
+      size: 13172058
   scrape_commands:
     cmd: python command_generator/scraper.py
     deps:

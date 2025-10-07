@@ -1,5 +1,5 @@
 outs:
-- md5: c0fffdf2ba9e30319e81230c2c8eec7d
-  size: 5146231
+- md5: 6ce290a41a26cdddfc80973569c3c240
+  size: 4183355
   hash: md5
   path: bash_commands.csv
