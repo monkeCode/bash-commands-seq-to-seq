@@ -17,115 +17,26 @@ This project implements a machine learning system that translates natural langua
 
 ### Data Collection and Annotation
 
-We collected and annotated approximately 59k real terminal commands using a multi-stage process:
+I collected and annotated over 60k real terminal executed commands from `.bash_history` `.zsh_history` files, internet sources, and parsing man pages:
 
-#### **Initial Annotation with LFM2 1.2B**
+#### **LLM evaluations**
 
-Used LFM2 1.2B model for its superior prompt-following capabilities
+For annotation and filter task was evaluated llms and prompts on hand markuped dataset in 100 examples.
 
-<details>
-<summary>Annotation prompt</summary>
+Model annotated every bash command with the `is_command` true or false label. There is metrics of this annotations
 
-```md
-You are a bash command explanation system. Analyze the given bash command and provide a clear, accurate description in action format.
+| Model                              | precision | recall | f1    | fn  | fp  |
+| ---------------------------------- | --------- | ------ | ----- | --- | --- |
+| qwen/qwen3-coder-30b               | 0.971     | 0.827  | 0.893 | 14  | 2   |
+| microsoft/phi-4                    | 0.932     | 0.85   | 0.889 | 12  | 5   |
+| qwen/qwen3-4b-2507                 | 0.922     | 0.728  | 0.814 | 22  | 5   |
+| mistralai/mistral-7b-instruct-v0.3 | 0.904     | 0.815  | 0.857 | 15  | 7   |
+| google/gemma-3n-e4b                | 0.876     | 0.963  | 0.918 | 3   | 11  |
+| liquid/lfm2-1.2b                   | 0.824     | 0.763  | 0.792 | 19  | 13  |
 
-## Input
+qwen3-coder-30b was selected as a markup model for dataset because of it's perfomans and annotations abilites.
 
-- Receive a bash command string
-- Commands may include flags, arguments, and complex syntax
-
-## Output Requirements
-
-- Provide a JSON object with exactly two fields: "reasoning" and "description"
-- "reasoning": Detailed technical analysis of the command, explaining each component (flags, arguments, syntax)
-- "description": Concise, human-readable action of what the command does (1-2 sentences), always note paths, urls, ips, and important content
-- Use English only for all output
-- Check command is valid, exists and could be executed and contains no excess text or anything else, mark it in is_command field as true, false otherwise, follow the next instuctions:
-
-### MARK is_command true if:
-
-- command is valid and exists
-- command could be executed without errors
-- command not contains excess text or something else
-
-### MARK is_command false if:
-
-- command does not exists
-- command is'n complete or contains excess text
-
-IF COMMAND CONTAINS FILES OR IP ADDRESSES LET IT CORRECT AND EXISTS, VERFY ONLY SYNTAXIS IN COMMANDS
-
-## Examples
-
-Input: "cd /var/log"
-Output: {{
-  "reasoning": "Command 'cd' (change directory) with argument '/var/log' (absolute path to directory)",
-  "description": "Change current working directory to /var/log",
-  is_command:true
-  }}
-
-Input: "tar -czvf archive.tar.gz /home/user"
-Output: {{
-  "reasoning": "Command 'tar' (tape archive) with flags: -c (create archive), -z (gzip compression), -v (verbose output), -f (specify filename). Arguments: 'archive.tar.gz' (output filename), '/home/user' (directory to archive)",
-  "description": "Create a gzip-compressed tar archive of /home/user directory",
-  is_command: true
-  }}
-
-Input: "//192.168.2.101/ShareForVMs /media/share/ cifs username=toeknee,password=2dog$hit3"
-Output: {{
-  "reasoning": "No commands provided, it could be line in log file or part of arguments. command is incorrect",
-  "description": "no command is provided",
-  is_command: false
-  }}
-
-Input: "git clone git://projects.archlinux.org/archiso.git && cd archiso"
-Output:{{
-  "reasoning": "The command uses `git clone` to create a copy of the repository from 'git://projects.archlinux.org/archiso.git'. It then changes the current working directory to 'archiso' using `cd`. No files or IP addresses are involved.",
-  "description": "Clones the Git repository from the projects.archlinux.org/archiso.git and changes the current working directory to archiso.",
-  "is_command": true
-  }}
-
-## Security Note
-
-- Do not execute or simulate execution of any commands
-- Provide analysis based on command syntax and documentation only
-- Flag potentially destructive commands in your reasoning
-
-## Output Format
-
-{format_instructions}
-
-YOU SHOULD ALWAYS FOLLOW OUTPUT FORMAT, NO SKIPS, NO OTHER FIELDS, NO ANYTHING ELSE, ONLY reasoning, description and is_command JSON
-
-Describe this command: {command}
-```
-
-</details>
-
-### **Manual Validation**
-
-Developed a Flask application for human annotation
-Annotated 100 samples with three quality categories:
-
-- **Good**: Complete correspondence between command and description
-- **Partly Good**: Missing file paths or specific mechanisms but generally correct
-- **Bad**: Incorrect correspondence or serious errors in file paths
-
-### **Quality Metrics**
-
-| Category    | Count | Percentage |
-| ----------- | ----- | ---------- |
-| Good        | 63    | 63%        |
-| Partly Good | 12    | 12%        |
-| Bad         | 10    | 10%        |
-
-### **Annotation Performance**
-
-Model annotated every bash line with the `is_command` true or false label. There is metrics of this annotations:
-
-- Precision: 0.9529
-- Recall: 0.92045
-- F1-score: 0.9364
+Final markup has 45119 (70%) of valid command.
 
 ### **Additional Data Sources**
 
@@ -133,29 +44,40 @@ Model annotated every bash line with the `is_command` true or false label. There
   - <https://github.com/magnumresearchgroup/bash_gen>
   - darkknight25/Linux_Terminal_Commands_Dataset
   - aelhalili/bash-commands-dataset
+  - <https://github.com/TellinaTool/nl2bash>
 - Parsing linux man pages
+
+As a test datasets i use sample of nl2bash expert markuped dataset and ballanced with additional hand markuped data for train/test examples balancing.
 
 ### Final Dataset Composition
 
 | Split    | Samples | Description                     |
 | -------- | ------- | ------------------------------- |
-| Training | 93824   | Filtered and annotated commands |
-| Test     | 1500    | Manually verified commands      |
+| Training | 111235  | Filtered and annotated commands |
+| Test     | 1190    | Manually verified commands      |
+
+#### Train distribution
+
+![train distribution](docs/train_commands_dist.png)
+
+#### Test distribution
+
+![test distribution](docs/test_commands_dist.png)
 
 ## Training Setup
 
 ### Hyperparameters
 
-| Parameter         | Value               |
-| ----------------- | ------------------- |
-| Base Model        | t5-small            |
-| Learning Rate     | 1e-4                |
-| Batch Size        | 16                  |
-| Max Epochs        | 15                  |
-| Max Source Length | 128 tokens          |
-| Max Target Length | 64 tokens           |
-| Early Stopping    | Based on BLEU score |
-| Optimizer         | Adam                |
+| Parameter         | Value                |
+| ----------------- | -------------------- |
+| Base Model        | t5-small             |
+| Learning Rate     | 1e-4                 |
+| Batch Size        | 16                   |
+| Max Epochs        | 15                   |
+| Max Source Length | 128 tokens           |
+| Max Target Length | 64 tokens            |
+| Early Stopping    | Based on BLEU2 score |
+| Optimizer         | Adam                 |
 
 ### Performance Metrics on test set
 
@@ -163,6 +85,20 @@ Model annotated every bash line with the `is_command` true or false label. There
 | -------------- | ----- |
 | Perplexity     | 1.17  |
 | $BLEU^2$ Score | 0.66  |
+| $BLEU^4$ Score | 0.66  |
+
+### Evaluation comparition
+
+I Also eval llms on test dataset on command generation task. there are results of it
+
+| Model                              | $BLEU_2$ | $BLEU_4$ |
+| ---------------------------------- | -------- | -------- |
+| qwen/qwen3-coder-30b               | 0.337    | 0.195    |
+| microsoft/phi-4                    | 0.293    | 0.168    |
+| google/gemma-3n-e4b                | 0.277    | 0.156    |
+| qwen/qwen3-4b-2507                 | 0.259    | 0.147    |
+| liquid/lfm2-1.2b                   | 0.151    | 0.071    |
+| mistralai/mistral-7b-instruct-v0.3 | 0.031    | 0.015    |
 
 ## Infrastructure
 

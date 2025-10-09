@@ -129,7 +129,7 @@ class T5DataModule(pl.LightningDataModule):
 class T5Model(pl.LightningModule):
     def __init__(self, tokenizer, model_name='t5-small', lr=1e-4, max_target_len=64):
         super().__init__()
-        self.model = T5ForConditionalGeneration.from_pretrained(model_name)
+        self.model = T5ForConditionalGeneration.from_pretrained(model_name).train()
         self.tokenizer = tokenizer
         self.lr = lr
         self.max_target_len = max_target_len
@@ -236,7 +236,7 @@ def main():
     parser.add_argument('--max_epochs', type=int, default=10, help='Epoches count')
     parser.add_argument('--batch_size', type=int, default=16, help='Batch size')
     parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
-    parser.add_argument('--experiment_name', type=str, default='T5-Training', help='MLflow exp name')
+    parser.add_argument('--experiment_name', type=str, default='T5-Training-New', help='MLflow exp name')
     parser.add_argument('--run_id', type=str, default=None, help='Mlflow run id for resume training')
     parser.add_argument('--checkpoint_path', type=str, default=None, help='path to checkpoing.ckpt file')
     
