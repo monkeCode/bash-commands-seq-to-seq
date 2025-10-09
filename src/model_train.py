@@ -10,9 +10,7 @@ import mlflow
 import mlflow.transformers
 from torchmetrics.text import BLEUScore
 from torchmetrics.text import Perplexity
-from mlflow.data.meta_dataset import MetaDataset
 from torchmetrics import Metric
-import numpy as np
 
 MLFLOW_ADDR = "http://mlflow.k3s.home"
 
@@ -279,7 +277,6 @@ def main():
             'task': 'text2text-generation'
         })
         
-        # Log model architecture and task as tags
         mlflow.set_tags({
             'architecture': 'T5ForConditionalGeneration',
             'task': 'text2text-generation',
@@ -338,7 +335,7 @@ def main():
             transformers_model=components,
             artifact_path="t5-model",
             signature=signature,
-            input_example=["List all files in current directory"],
+            input_example="list all files in current directory",
             task ="text2text-generation",
             architecture="T5ForConditionalGeneration",
         )

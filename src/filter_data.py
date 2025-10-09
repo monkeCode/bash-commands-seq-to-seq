@@ -7,5 +7,7 @@ big_frame = big_frame[big_frame.command.apply(lambda x:x[0]!="#")]
 
 internet_frame = pd.read_csv("data/inet_dataset.csv")
 
+yet_another_commands = pd.read_json("data/commands.json")
 
-pd.concat([big_frame[["command", "description"]], internet_frame[["command", "description"]]]).to_csv("data/train.csv", index=None)
+
+pd.concat([big_frame[["command", "description"]], internet_frame[["command", "description"]], yet_another_commands[["command", "description"]]]).to_csv("data/train.csv", index=None)

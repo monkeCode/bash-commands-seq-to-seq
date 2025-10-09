@@ -1,0 +1,5 @@
+outs:
+- md5: 1b7d586e38d2160e0dabbdda2dcfa155
+  size: 235648
+  hash: md5
+  path: commands.json

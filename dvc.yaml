@@ -5,6 +5,7 @@ stages:
     - data/generated_data.csv
     - src/filter_data.py
     - data/inet_dataset.csv
+    - data/commands.json
     outs:
     - data/train.csv
   scrape_commands:

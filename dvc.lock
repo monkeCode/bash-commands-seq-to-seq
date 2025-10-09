@@ -19,6 +19,10 @@ stages:
   prepare_train_data:
     cmd: python src/filter_data.py
     deps:
+    - path: data/commands.json
+      hash: md5
+      md5: 1b7d586e38d2160e0dabbdda2dcfa155
+      size: 235648
     - path: data/generated_data.csv
       hash: md5
       md5: f7b29d72308580b498d355d578eadeec
@@ -29,13 +33,13 @@ stages:
       size: 7205479
     - path: src/filter_data.py
       hash: md5
-      md5: 3cd0af6a7d75ccc677f54104e2c08473
-      size: 370
+      md5: ade68eb937711dec36f2bce27c12c8da
+      size: 479
     outs:
     - path: data/train.csv
       hash: md5
-      md5: 130b0dd572bcfd6cd28e6ace16190d98
-      size: 13172058
+      md5: 5dab7098bbf1993fa831c345f80e6e7d
+      size: 13316061
   scrape_commands:
     cmd: python command_generator/scraper.py
     deps:
