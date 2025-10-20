@@ -2,4 +2,4 @@
     remote = myremote
 ['remote "myremote"']
     url = s3://test-bucket
-    endpointurl = http://192.168.100.222:9000
+    endpointurl = http://minio.home:9000

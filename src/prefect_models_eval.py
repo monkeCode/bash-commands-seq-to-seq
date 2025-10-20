@@ -51,7 +51,7 @@ def calculate_bleu_scores(generated, reference):
 
 @flow(description="eval bash generation model", name="bash eval", task_runner=ThreadPoolTaskRunner(max_workers=2))
 def evaluate_model(prompt_uri, dataset_path, intent_column='intent', command_column='command', 
-                   model="local-model", max_workers=1):
+                   model="local-model", host="http://localhost:1234/v1", max_workers=1):
     mlflow.set_experiment("bash-command-llm-eval")
     
     logger = get_run_logger()
@@ -66,7 +66,7 @@ def evaluate_model(prompt_uri, dataset_path, intent_column='intent', command_col
         
         llm = ChatOpenAI(
             api_key="unused",
-            base_url="http://localhost:1234/v1", 
+            base_url=host, 
             temperature=0, 
             max_completion_tokens=2048,
             model=model

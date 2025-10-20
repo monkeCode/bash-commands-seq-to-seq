@@ -4,12 +4,12 @@ A fine-tuned T5-small model for generating bash commands from natural language d
 
 ## Overview
 
-This project implements a machine learning system that translates natural language requests into executable bash commands. The model is based on T5-small architecture, fine-tuned on a carefully curated dataset of bash commands and their natural language descriptions.
+This project implements a machine learning system that translates natural language requests into executable bash commands. The model is based on the T5-small architecture and has been fine-tuned on a carefully curated dataset of bash commands paired with their natural language descriptions.
 
 ## Model Architecture
 
-- **Base Model**: T5-small
-- **Task**: Sequence-to-sequence translation (text → bash command)
+- **Base Model**: T5-small (60M parameters)
+- **Task**: Sequence-to-sequence translation (natural language → bash command)
 - **Framework**: PyTorch Lightning with Hugging Face Transformers
 - **Training Strategy**: Fine-tuning with early stopping and best model checkpointing
 
@@ -17,50 +17,47 @@ This project implements a machine learning system that translates natural langua
 
 ### Data Collection and Annotation
 
-I collected and annotated over 60k real terminal executed commands from `.bash_history` `.zsh_history` files, internet sources, and parsing man pages:
+The dataset comprises over 60k real terminal commands collected from `.bash_history`, `.zsh_history` files, internet sources, and parsed man pages.
 
-#### **LLM evaluations**
+#### LLM Annotation Performance
 
-For annotation and filter task was evaluated llms and prompts on hand markuped dataset in 100 examples.
+For data annotation and filtering tasks, multiple LLMs were evaluated on a hand-annotated dataset of 100 examples. Each model classified bash commands with `is_command` labels (true/false).
 
-Model annotated every bash command with the `is_command` true or false label. There is metrics of this annotations
+| Model                              | Size | Quantization | Precision | Recall | F1    | Inference Time 100 examples (RTX 3060 Ti) |
+| ---------------------------------- | ---- | ------------ | --------- | ------ | ----- | ----------------------------------------- |
+| qwen/qwen3-coder-30b               | 30B  | Q4_K_M       | 0.971     | 0.827  | 0.893 | 13.0 min                                  |
+| microsoft/phi-4                    | 15B  | Q4_K_M       | 0.932     | 0.85   | 0.889 | 22.2min                                   |
+| qwen/qwen3-4b-2507                 | 4B   | Q4_K_M       | 0.922     | 0.728  | 0.814 | 2.3min                                    |
+| mistralai/mistral-7b-instruct-v0.3 | 7B   | Q4_K_M       | 0.904     | 0.815  | 0.857 | 2.7min                                    |
+| google/gemma-3n-e4b                | 6.9B | Q4_K_M       | 0.876     | 0.963  | 0.918 | 3.3min                                    |
+| liquid/lfm2-1.2b                   | 1.2B | Q8_0         | 0.824     | 0.763  | 0.792 | 1.2min                                    |
 
-| Model                              | precision | recall | f1    | fn  | fp  |
-| ---------------------------------- | --------- | ------ | ----- | --- | --- |
-| qwen/qwen3-coder-30b               | 0.971     | 0.827  | 0.893 | 14  | 2   |
-| microsoft/phi-4                    | 0.932     | 0.85   | 0.889 | 12  | 5   |
-| qwen/qwen3-4b-2507                 | 0.922     | 0.728  | 0.814 | 22  | 5   |
-| mistralai/mistral-7b-instruct-v0.3 | 0.904     | 0.815  | 0.857 | 15  | 7   |
-| google/gemma-3n-e4b                | 0.876     | 0.963  | 0.918 | 3   | 11  |
-| liquid/lfm2-1.2b                   | 0.824     | 0.763  | 0.792 | 19  | 13  |
+Qwen3-coder-30b was selected as the primary annotation model due to its superior performance and annotation capabilities. \
+The final annotated dataset contains 45,119 valid commands (70% of the original data).
 
-qwen3-coder-30b was selected as a markup model for dataset because of it's perfomans and annotations abilites.
+### Additional Data Sources
 
-Final markup has 45119 (70%) of valid command.
-
-### **Additional Data Sources**
-
-- Public datasets
-  - <https://github.com/magnumresearchgroup/bash_gen>
+- **Public Datasets**:
+  - magnumresearchgroup/bash_gen
   - darkknight25/Linux_Terminal_Commands_Dataset
   - aelhalili/bash-commands-dataset
-  - <https://github.com/TellinaTool/nl2bash>
-- Parsing linux man pages
-
-As a test datasets i use sample of nl2bash expert markuped dataset and ballanced with additional hand markuped data for train/test examples balancing.
+  - TellinaTool/nl2bash
+- **Linux Man Pages**: Automated parsing of command documentation
 
 ### Final Dataset Composition
 
 | Split    | Samples | Description                     |
 | -------- | ------- | ------------------------------- |
-| Training | 111235  | Filtered and annotated commands |
-| Test     | 1190    | Manually verified commands      |
+| Training | 111,235 | Filtered and annotated commands |
+| Test     | 1,190   | Manually verified commands      |
 
-#### Train distribution
+#### Command Distribution
+
+Training commands distribution:
 
 ![train distribution](docs/train_commands_dist.png)
 
-#### Test distribution
+Test commands distribution:
 
 ![test distribution](docs/test_commands_dist.png)
 
@@ -76,29 +73,30 @@ As a test datasets i use sample of nl2bash expert markuped dataset and ballanced
 | Max Epochs        | 15                   |
 | Max Source Length | 128 tokens           |
 | Max Target Length | 64 tokens            |
-| Early Stopping    | Based on BLEU2 score |
+| Early Stopping    | Based on BLEU² score |
 | Optimizer         | Adam                 |
 
-### Performance Metrics on test set
+### Model Performance
 
-| Metric         | Value |
-| -------------- | ----- |
-| Perplexity     | 1.17  |
-| $BLEU^2$ Score | 0.66  |
-| $BLEU^4$ Score | 0.66  |
+| Metric          | Value   |
+| --------------- | ------- |
+| Perplexity      | 1.21    |
+| BLEU² Score     | 0.56    |
+| BLEU⁴ Score     | 0.44    |
+| Evaluation time | 7.3 min |
 
-### Evaluation comparition
+## Comparative Evaluation
 
-I Also eval llms on test dataset on command generation task. there are results of it
+### LLM Performance on Command Generation
 
-| Model                              | $BLEU_2$ | $BLEU_4$ |
-| ---------------------------------- | -------- | -------- |
-| qwen/qwen3-coder-30b               | 0.337    | 0.195    |
-| microsoft/phi-4                    | 0.293    | 0.168    |
-| google/gemma-3n-e4b                | 0.277    | 0.156    |
-| qwen/qwen3-4b-2507                 | 0.259    | 0.147    |
-| liquid/lfm2-1.2b                   | 0.151    | 0.071    |
-| mistralai/mistral-7b-instruct-v0.3 | 0.031    | 0.015    |
+| Model                              | Size | Quantization | BLEU² | BLEU⁴ | Inference Time 1190 examples (RTX 3060 Ti) |
+| ---------------------------------- | ---- | ------------ | ----- | ----- | ------------------------------------------ |
+| qwen/qwen3-coder-30b               | 30B  | Q4_K_M       | 0.338 | 0.193 | 72 min                                     |
+| microsoft/phi-4                    | 15B  | Q4_K_M       | 0.293 | 0.168 | 54.9 min                                   |
+| qwen/qwen3-4b-2507                 | 4B   | Q4_K_M       | 0.263 | 0.148 | 23.6 min                                   |
+| google/gemma-3n-e4b                | 6.9B | Q4_K_M       | 0.277 | 0.156 | 18.8 min                                   |
+| liquid/lfm2-1.2b                   | 1.2B | Q8_0         | 0.135 | 0.064 | 12.3                                       |
+| mistralai/mistral-7b-instruct-v0.3 | 7B   | Q4_K_M       | 0.031 | 0.015 | 78 min                                     |
 
 ## Infrastructure
 
@@ -110,10 +108,11 @@ I Also eval llms on test dataset on command generation task. there are results o
 - **Manual Annotation**: Flask web application for human verification
 - **Training Framework**: PyTorch Lightning with Hugging Face Transformers
 
-## Results and Evaluation
+## Results and Deployment
 
-The final model was posted on hugging face and is available at the link:
-example of inference:
+The final model is available on Hugging Face: [GeraniumCat/bash-seq-to-seq](https://huggingface.co/GeraniumCat/bash-seq-to-seq)
+
+**Example Usage**:
 
 ```python
 from transformers import pipeline
@@ -121,9 +120,3 @@ from transformers import pipeline
 pipe = pipeline("translation", model="GeraniumCat/bash-seq-to-seq")
 pipe("find all files with txt extension")
 ```
-
-## Future Work
-
-- Expand dataset with more diverse command patterns
-- Incorporate syntax-aware decoding for improved command validity
-- Develop a safety module to prevent generation of harmful commands

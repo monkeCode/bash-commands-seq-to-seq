@@ -33,13 +33,13 @@ stages:
       size: 7205479
     - path: src/filter_data.py
       hash: md5
-      md5: ade68eb937711dec36f2bce27c12c8da
-      size: 479
+      md5: d84b4489e3d67f0842d234b089d4066a
+      size: 852
     outs:
     - path: data/train.csv
       hash: md5
-      md5: 5dab7098bbf1993fa831c345f80e6e7d
-      size: 13316061
+      md5: a6733ab9babba4c367af3e8b299da1d3
+      size: 11724757
   scrape_commands:
     cmd: python command_generator/scraper.py
     deps:
