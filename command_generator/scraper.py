@@ -11,16 +11,15 @@ import os
 
 class ManScraper:
     def __init__(self, utilities):
-
         self.utilities = utilities
         self.descs = {}
         self.data = {}
         self.relevant_flags = {}
         self.lock = threading.Lock()
 
-    def load_relevant_flags(self, path='original_training.txt'):
+    def load_relevant_flags(self, path="original_training.txt"):
         with open(path) as fp:
-            self.relevant_flags = set(fp.read().replace('\n', ' ').split(' '))
+            self.relevant_flags = set(fp.read().replace("\n", " ").split(" "))
 
     def is_relevant(self, flag):
         return False if "--" in flag and flag not in self.relevant_flags else True
@@ -34,28 +33,25 @@ class ManScraper:
             for section in [1, 2, 3, 4, 5, 6, 7, 8]:
                 try:
                     result = subprocess.run(
-                        ['man', str(section), utility],
+                        ["man", str(section), utility],
                         capture_output=True,
                         text=True,
-                        timeout=10
+                        timeout=10,
                     )
                     if result.returncode == 0:
                         return result.stdout
                 except (subprocess.TimeoutExpired, FileNotFoundError):
                     continue
-                    
+
             result = subprocess.run(
-                ['man', utility],
-                capture_output=True,
-                text=True,
-                timeout=10
+                ["man", utility], capture_output=True, text=True, timeout=10
             )
             if result.returncode == 0:
                 return result.stdout
-                
+
         except Exception as e:
             print(f"Error getting man page for {utility}: {str(e)}")
-            
+
         return None
 
     def _process_utility(self, utility):
@@ -64,19 +60,25 @@ class ManScraper:
             return utility, None, None
 
         try:
-            syntax_match = re.search(r'SYNOPSIS.*?(?=DESCRIPTION|$)', man_page, re.DOTALL | re.IGNORECASE)
+            syntax_match = re.search(
+                r"SYNOPSIS.*?(?=DESCRIPTION|$)", man_page, re.DOTALL | re.IGNORECASE
+            )
             syntax = syntax_match.group(0) if syntax_match else ""
-            
-            options_match = re.search(r'OPTIONS.*?(?=EXAMPLES|EXIT STATUS|FILES|SEE ALSO|$)', man_page, re.DOTALL | re.IGNORECASE)
+
+            options_match = re.search(
+                r"OPTIONS.*?(?=EXAMPLES|EXIT STATUS|FILES|SEE ALSO|$)",
+                man_page,
+                re.DOTALL | re.IGNORECASE,
+            )
             options = options_match.group(0) if options_match else ""
-            
-            flag_lines = re.findall(r'^\s*(-\w+.*?)$', options, re.MULTILINE)
-            
-            synopsis_flags = re.findall(r'(-\w+)', syntax)
+
+            flag_lines = re.findall(r"^\s*(-\w+.*?)$", options, re.MULTILINE)
+
+            synopsis_flags = re.findall(r"(-\w+)", syntax)
             flag_lines.extend(synopsis_flags)
-            
+
             return utility, syntax, set(flag_lines)
-            
+
         except Exception as e:
             print(f"Error parsing man page for {utility}: {str(e)}")
             return utility, None, None
@@ -88,14 +90,17 @@ class ManScraper:
         successful_searches = []
 
         with ThreadPoolExecutor(max_workers=os.cpu_count() or 4) as executor:
-            futures = {executor.submit(self._process_utility, utility): utility for utility in self.utilities}
-            
+            futures = {
+                executor.submit(self._process_utility, utility): utility
+                for utility in self.utilities
+            }
+
             for future in tqdm(as_completed(futures), total=len(futures)):
                 utility = futures[future]
                 try:
                     result = future.result()
                     utility, syntax, flag_data = result
-                    
+
                     if syntax is None:
                         if utility in MANUAL_SYNTAX_INSERTS:
                             with self.lock:
@@ -121,38 +126,45 @@ class ManScraper:
                     print(f"Error processing {utility}: {str(e)}")
 
         self.convert_flag_types()
-        if 'find' in self.data:
-            self.data['find -L'] = self.data['find']
+        if "find" in self.data:
+            self.data["find -L"] = self.data["find"]
 
         print(f"Successfully parsed {len(successful_searches)} utilities")
         print(f"{len(no_page_uts)} utilities with no man page: {no_page_uts}")
-        print(f"{len(no_syntax_uts)} utilities without syntax structures: {no_syntax_uts}")
+        print(
+            f"{len(no_syntax_uts)} utilities without syntax structures: {no_syntax_uts}"
+        )
 
     def _clean_and_insert_flags(self, utility, lines):
         with self.lock:
             if utility not in self.data:
                 self.data[utility] = {}
-                
+
             for flag_line in lines:
                 flag_line = self._remove_punctuation(flag_line)
                 flag, arg = self._get_flag(flag_line), None
-                
+
                 if "[" in flag_line and "]" in flag_line:
                     arg = self._get_inner_brackets(flag_line)
                 elif "=" in flag_line:
                     arg = self._get_equal_arg(flag_line)
-                elif len(flag_line.split(" ")) == 2 and "-" not in flag_line.split(" ")[1]:
+                elif (
+                    len(flag_line.split(" ")) == 2
+                    and "-" not in flag_line.split(" ")[1]
+                ):
                     arg = flag_line.split(" ")[1]
-                
-                if (flag not in self.data[utility] or not self.data[utility][flag]) and self.is_relevant(flag):
+
+                if (
+                    flag not in self.data[utility] or not self.data[utility][flag]
+                ) and self.is_relevant(flag):
                     self.data[utility][flag] = arg
 
     @staticmethod
     def _generate_syntax(utility, syntax):
-        if not syntax or 'option' not in syntax.lower():
+        if not syntax or "option" not in syntax.lower():
             return None
 
-        s = syntax.replace('...', '')
+        s = syntax.replace("...", "")
         s = ManScraper._remove_brackets(ManScraper._remove_punctuation(s)).lower()
 
         sp = s.split(" ")
@@ -169,21 +181,21 @@ class ManScraper:
                         if match == val:
                             s = data_type
                 if s:
-                    if s == '[File]' and s in cleaned:
-                        cleaned.append('[File2]')
+                    if s == "[File]" and s in cleaned:
+                        cleaned.append("[File2]")
                     else:
                         cleaned.append(s)
 
         return " ".join(cleaned)
 
-    def save_json(self, syntax_path='syntax.json', map_path='utility_map.json'):
+    def save_json(self, syntax_path="syntax.json", map_path="utility_map.json"):
         if not self.data or not self.descs:
             raise Exception("Mapping and syntax uninitialized")
 
-        with open(syntax_path, 'w') as fp:
+        with open(syntax_path, "w") as fp:
             json.dump(self.descs, fp)
 
-        with open(map_path, 'w') as fp:
+        with open(map_path, "w") as fp:
             json.dump(self.data, fp)
 
     def insert_syntax(self, utility, syntax):
@@ -203,7 +215,7 @@ class ManScraper:
     def _get_inner_brackets(s):
         open_idx = s.index("[") + 1
         closed_idx = s.index("]")
-        a = s[open_idx: closed_idx]
+        a = s[open_idx:closed_idx]
         a = a.replace("=", "")
         return a
 
@@ -248,10 +260,10 @@ class ManScraper:
             for flag in self.data[ut]:
                 if self.data[ut][flag]:
                     arg_type = self.data[ut][flag]
-                    if arg_type == 'n' or 'size' in flag:
-                        self.data[ut][flag] = '[Medium Number]'
-                    elif 'file' in flag:
-                        self.data[ut][flag] = '[File]'
+                    if arg_type == "n" or "size" in flag:
+                        self.data[ut][flag] = "[Medium Number]"
+                    elif "file" in flag:
+                        self.data[ut][flag] = "[File]"
                     else:
                         for t in mapping:
                             for substr in mapping[t]:
@@ -264,7 +276,9 @@ if __name__ == "__main__":
     with open("command_generator/all_commands.txt") as f:
         for l in f.readlines():
             c.append(l.strip())
-            
+
     scraper = ManScraper(c)
     scraper.extract_utilities()
-    scraper.save_json("command_generator/syntax.json", 'command_generator/utility_map.json')
+    scraper.save_json(
+        "command_generator/syntax.json", "command_generator/utility_map.json"
+    )

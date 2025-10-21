@@ -1,0 +1,24 @@
+name: ml-training
+channels:
+  - conda-forge
+  - pytorch
+  - nvidia
+dependencies:
+  - python=3.12.9
+  - pytorch
+  - torchvision
+  - torchaudio
+  - pytorch-cuda
+  - transformers
+  - sentencepiece
+  - datasets
+  - accelerate
+  - mlflow
+  - pytorch-lightning
+  - tensorboard
+  - matplotlib
+  - pandas
+  - numpy
+  - scipy
+  - jupyter
+  - pip

@@ -5,13 +5,16 @@ import subprocess
 import threading
 from utils import *
 
+
 def valid_arg(flag):
     """Determines whether a flag argument scraped flag is in the predefined flag types"""
     return flag in ARG_TYPES or not flag
 
 
 class Generator:
-    def __init__(self,utilities, syntax_path='src/syntax.json', map_path='src/utility_map.json'):
+    def __init__(
+        self, utilities, syntax_path="src/syntax.json", map_path="src/utility_map.json"
+    ):
         """Initializes the Generator class.
 
         :param syntax_path: (str) A file path to retrieve syntax structure.
@@ -24,7 +27,9 @@ class Generator:
         with open(map_path) as fp:
             self.mappings = json.load(fp)
 
-        self.utilities = list(filter(lambda x: x in self.syntax and x in self.mappings, utilities))
+        self.utilities = list(
+            filter(lambda x: x in self.syntax and x in self.mappings, utilities)
+        )
 
     def get_utilities(self):
         """Gets a list of all of the utilities supported by the generator, ordered by usage"""
@@ -63,15 +68,15 @@ class Generator:
         :returns (list) of (str) the commands generated.
         """
         for ut in self.utilities:
-                if ut in self.syntax and ut in self.mappings:
-                    l = self.generate_commands(ut, max_commands=50)
-                    print(ut, len(l))
-                    with open(save_path, 'a') as fp:
-                        fp.write("\n".join(l))
+            if ut in self.syntax and ut in self.mappings:
+                l = self.generate_commands(ut, max_commands=50)
+                print(ut, len(l))
+                with open(save_path, "a") as fp:
+                    fp.write("\n".join(l))
 
-
-
-    def generate_scaled_commands(self, training_path='data/original_training.txt', save_path=None):
+    def generate_scaled_commands(
+        self, training_path="data/original_training.txt", save_path=None
+    ):
         """Generates commands scaled to distribution of training data.
 
         :param training_path: (str) the path to the training commands.
@@ -80,8 +85,8 @@ class Generator:
         """
         print(f"Generating commands to match distribution of {training_path}")
         with open(training_path) as fp:
-            cmds = fp.read().split('\n')
-            ut_list = [cmd.split(' ')[0] for cmd in cmds]
+            cmds = fp.read().split("\n")
+            ut_list = [cmd.split(" ")[0] for cmd in cmds]
             ut_count = collections.Counter(ut_list)
 
         multiplier = 10
@@ -93,15 +98,19 @@ class Generator:
             else:
                 cmds_to_add = self.generate_commands(ut, ut_count[ut] * multiplier)
                 if ut_count[ut] * multiplier > len(cmds_to_add):
-                    print(f"Unable to generate enough commands for {ut}, generated "
-                          f"{len(cmds_to_add)}/{multiplier * ut_count[ut]}")
+                    print(
+                        f"Unable to generate enough commands for {ut}, generated "
+                        f"{len(cmds_to_add)}/{multiplier * ut_count[ut]}"
+                    )
                 else:
-                    print(f"Successfully generated {len(cmds_to_add)} commands for {ut}")
+                    print(
+                        f"Successfully generated {len(cmds_to_add)} commands for {ut}"
+                    )
 
                 generated_cmds.extend(cmds_to_add)
 
         if save_path:
-            with open(save_path, 'w') as fp:
+            with open(save_path, "w") as fp:
                 fp.write("\n".join(generated_cmds))
 
         return generated_cmds
@@ -120,19 +129,28 @@ class Generator:
             for j in range(i + 1, len(keys)):
                 for k in range(j + 1, len(keys)):
                     if all(valid_arg(flag_map[x]) for x in [keys[i], keys[j], keys[k]]):
-                        f1 = " ".join([keys[i], flag_map[keys[i]]]) if flag_map[keys[i]] else keys[
-                            i]
-                        f2 = " ".join([keys[j], flag_map[keys[j]]]) if flag_map[keys[j]] else keys[
-                            j]
-                        f3 = " ".join([keys[k], flag_map[keys[k]]]) if flag_map[keys[k]] else keys[
-                            k]
+                        f1 = (
+                            " ".join([keys[i], flag_map[keys[i]]])
+                            if flag_map[keys[i]]
+                            else keys[i]
+                        )
+                        f2 = (
+                            " ".join([keys[j], flag_map[keys[j]]])
+                            if flag_map[keys[j]]
+                            else keys[j]
+                        )
+                        f3 = (
+                            " ".join([keys[k], flag_map[keys[k]]])
+                            if flag_map[keys[k]]
+                            else keys[k]
+                        )
                         ret.append(f1)
                         ret.append(" ".join([f1, f2]))
                         ret.append(" ".join([f1, f2, f3]))
         return list(set(ret))
 
 
-def replace(rep_path, in_path, out_path='replaced_cmds.txt', reverse=False):
+def replace(rep_path, in_path, out_path="replaced_cmds.txt", reverse=False):
     """Replaces particular words within a list of commands according to a given mapping.
 
     This function can be used to turn a list of generic commands to actual executable commands,
@@ -154,26 +172,26 @@ def replace(rep_path, in_path, out_path='replaced_cmds.txt', reverse=False):
     'find Folder -regex File' -->   'find /abc -regex temp.text'
     """
 
-    with open(in_path, 'r') as fp:
+    with open(in_path, "r") as fp:
         old_cmds = fp.read()
 
-    with open(rep_path, 'r') as fp:
+    with open(rep_path, "r") as fp:
         reps = json.load(fp)
 
     if reverse:
         reps = {value: key for (key, value) in reps.items()}
 
     cmds = []
-    old_cmds = old_cmds.split('\n')
+    old_cmds = old_cmds.split("\n")
     for cmd in old_cmds:
         new_cmd = []
-        for word in cmd.split(' '):
+        for word in cmd.split(" "):
             if word in reps:
                 word = reps[word]
             new_cmd.append(word)
         cmds.append(" ".join(new_cmd))
 
-    with open(out_path, 'w') as fp:
+    with open(out_path, "w") as fp:
         fp.write("\n".join(cmds))
 
 
@@ -193,12 +211,12 @@ def validate_commands(file_path, out_path=None, checkpoint=0, sudo=False):
     :param sudo: (bool) whether to run the commands as a root user.
     :returns: (list) of (str) commands that came back with a zero exit status.
     """
-    with open(file_path, 'r') as f:
-        cmds = f.read().split('\n')
+    with open(file_path, "r") as f:
+        cmds = f.read().split("\n")
     ret = []
 
     if checkpoint > 0 and out_path:
-        with open(out_path, 'r') as fp:
+        with open(out_path, "r") as fp:
             ret = fp.read().split("\n")
             ret.pop()
 
@@ -217,7 +235,7 @@ def validate_commands(file_path, out_path=None, checkpoint=0, sudo=False):
             ret.append(cmd)
 
         if out_path and count % 100 == 0:
-            with open(out_path, 'w') as fp:
+            with open(out_path, "w") as fp:
                 ins = "\n".join(ret + [str(count)])
                 fp.write(ins)
             print(f"BENCHMARK: {count}")
@@ -225,7 +243,7 @@ def validate_commands(file_path, out_path=None, checkpoint=0, sudo=False):
         print(f"processed {count}/{len(cmds)} commands")
 
     if out_path:
-        with open(out_path, 'w') as fp:
+        with open(out_path, "w") as fp:
             fp.write("\n".join(ret))
     return ret
 
@@ -238,8 +256,13 @@ class Command(object):
 
     def run_command(self):
         # capturing the outputs of shell commands
-        self.process = subprocess.Popen(self.cmd, shell=True, stdout=subprocess.PIPE,
-                                        stderr=subprocess.PIPE, stdin=subprocess.PIPE)
+        self.process = subprocess.Popen(
+            self.cmd,
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            stdin=subprocess.PIPE,
+        )
         self.process.communicate()
         self.code = self.process.returncode
 
@@ -249,7 +272,7 @@ class Command(object):
         thread.start()
         thread.join(timeout)
         if thread.is_alive():
-            print('Command timeout, kill it: ' + self.cmd)
+            print("Command timeout, kill it: " + self.cmd)
             if self.process is not None:
                 self.process.terminate()
                 thread.join(timeout)
@@ -257,11 +280,14 @@ class Command(object):
 
 
 if __name__ == "__main__":
-
     c = []
     with open("command_generator/all_commands.txt") as f:
         for l in f.readlines():
             c.append(l.strip())
-            
-    gen = Generator(utilities=c, syntax_path="command_generator/syntax.json", map_path="command_generator/utility_map.json")
+
+    gen = Generator(
+        utilities=c,
+        syntax_path="command_generator/syntax.json",
+        map_path="command_generator/utility_map.json",
+    )
     gen.generate_all_commands("command_generator/command_templates.txt")
