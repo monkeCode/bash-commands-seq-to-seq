@@ -20,5 +20,8 @@ dependencies:
   - pandas
   - numpy
   - scipy
+  - matplotlib
+  - seaborn
+  - plotly
   - jupyter
   - pip
